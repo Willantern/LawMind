@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Law-Mind — Closed-form PDE Discovery</title>
+<meta name="description" content="Law-Mind: automated discovery of closed-form analytical solutions to PDEs from governing equations, without numerical data or supervision." />
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)']],
+    displayMath: [['\\[', '\\]']]
+  },
+  svg: { fontCache: 'none' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+
+<style>
+:root{
+  --black:#000000;
+  --ink:#111111;
+  --ink-2:#1f1f1f;
+  --paper:#ffffff;
+  --paper-2:#f6f6f6;
+  --paper-3:#fbfbfb;
+  --line:#d9d9d9;
+  --line-strong:#111111;
+  --text:#111111;
+  --muted:#5f5f5f;
+  --muted-2:#7b7b7b;
+  --shadow:0 18px 40px rgba(0,0,0,.06);
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--paper-2);
+  color:var(--text);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a{color:inherit;text-decoration:none;}
+img,svg{display:block;}
+
+.topbar{
+  background:var(--black);
+  color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.14);
+}
+
+.topbar-inner,
+.hero-inner,
+.main-shell,
+.footer-inner{
+  width:min(1180px, calc(100vw - 40px));
+  margin:0 auto;
+}
+
+.topbar-inner{
+  min-height:74px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.brand-mark{
+  width:46px;
+  height:46px;
+  border:1px solid rgba(255,255,255,.24);
+  background:#050505;
+}
+
+.brand-text strong{
+  display:block;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:.06em;
+}
+
+.brand-text span{
+  display:block;
+  margin-top:2px;
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.62);
+}
+
+.nav{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.nav a{
+  padding:10px 14px;
+  border:1px solid rgba(255,255,255,.14);
+  color:#fff;
+  font-size:13px;
+  transition:background .25s ease, border-color .25s ease, transform .25s ease;
+}
+
+.nav a:hover{
+  background:#fff;
+  color:#000;
+  border-color:#fff;
+  transform:translateY(-1px);
+}
+
+.hero{
+  background:var(--black);
+  color:#fff;
+  padding:34px 0 42px;
+}
+
+.hero-inner{
+  display:grid;
+  grid-template-columns:1.1fr .9fr;
+  gap:28px;
+  align-items:end;
+}
+
+.kicker{
+  margin:0 0 14px;
+  color:rgba(255,255,255,.58);
+  font-size:11px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+}
+
+.hero h1{
+  margin:0;
+  font-size:clamp(30px, 5vw, 56px);
+  line-height:1.02;
+  letter-spacing:-.03em;
+  font-weight:700;
+}
+
+.hero-lead{
+  margin:18px 0 0;
+  max-width:720px;
+  color:rgba(255,255,255,.78);
+  font-size:16px;
+  line-height:1.8;
+}
+
+.hero-side{
+  padding:18px 0 0;
+}
+
+.hero-metrics{
+  display:grid;
+  gap:12px;
+}
+
+.metric{
+  padding:14px 16px;
+  border-top:1px solid rgba(255,255,255,.16);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.metric strong{
+  display:block;
+  font-size:12px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.5);
+  margin-bottom:8px;
+}
+
+.metric span{
+  display:block;
+  color:#fff;
+  font-size:15px;
+  line-height:1.7;
+}
+
+.main-shell{
+  padding:28px 0 40px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+}
+
+.card,
+.animation-card,
+.wide-card{
+  background:var(--paper);
+  border:1px solid var(--line);
+  box-shadow:var(--shadow);
+}
+
+.card{
+  padding:22px;
+}
+
+.wide-card{
+  grid-column:1 / -1;
+  padding:0;
+}
+
+.card-title,
+.section-heading{
+  margin:0 0 16px;
+  color:var(--ink);
+  font-size:12px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+
+.card p,
+.card li,
+.wide-card p{
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.8;
+}
+
+.card ul{
+  margin:0;
+  padding-left:18px;
+}
+
+.icon-showcase{
+  display:flex;
+  align-items:center;
+  gap:18px;
+}
+
+.icon-panel{
+  width:92px;
+  height:92px;
+  border:1px solid var(--line-strong);
+  background:#fff;
+  flex:none;
+}
+
+.icon-caption strong{
+  display:block;
+  margin-bottom:6px;
+  font-size:15px;
+}
+
+.links{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.link-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 16px;
+  border:1px solid var(--line-strong);
+  background:#fff;
+  color:var(--ink);
+  font-size:14px;
+  transition:transform .25s ease, background .25s ease, color .25s ease;
+}
+
+.link-btn:hover{
+  transform:translateY(-1px);
+  background:#000;
+  color:#fff;
+}
+
+.animation-card{
+  grid-column:1 / -1;
+  overflow:hidden;
+}
+
+.animation-header{
+  padding:22px 22px 18px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:16px;
+  align-items:end;
+  background:var(--paper-3);
+}
+
+.animation-header p{
+  margin:8px 0 0;
+  max-width:760px;
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.8;
+}
+
+.anim-status{
+  text-align:right;
+}
+
+.anim-status strong{
+  display:block;
+  font-size:12px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--muted-2);
+  margin-bottom:6px;
+}
+
+.anim-status span{
+  color:var(--ink);
+  font-size:14px;
+}
+
+.animation-body{
+  display:grid;
+  grid-template-columns:260px 1fr 280px;
+  min-height:640px;
+}
+
+.side-panel,
+.trace-panel{
+  padding:20px;
+  background:#fff;
+}
+
+.side-panel{
+  border-right:1px solid var(--line);
+}
+
+.trace-panel{
+  border-left:1px solid var(--line);
+}
+
+.info-block + .info-block{
+  margin-top:20px;
+}
+
+.info-block .label,
+.trace-panel .label{
+  margin:0 0 12px;
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--muted-2);
+}
+
+.pde-box{
+  min-height:84px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  color:var(--ink);
+  font-size:22px;
+}
+
+.stage-list{
+  display:grid;
+  gap:10px;
+}
+
+.stage-row{
+  position:relative;
+  padding:10px 0 10px 18px;
+  border-left:1px solid #cfcfcf;
+  color:var(--muted);
+  transition:.25s ease;
+}
+
+.stage-row::before{
+  content:"";
+  position:absolute;
+  left:-4px;
+  top:17px;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#bfbfbf;
+  transition:.25s ease;
+}
+
+.stage-row.active{
+  color:#000;
+  border-color:#000;
+  transform:translateX(2px);
+}
+
+.stage-row.active::before{
+  background:#000;
+  transform:scale(1.25);
+}
+
+.stage-row.done{
+  color:#222;
+  border-color:#7e7e7e;
+}
+
+.stage-name{
+  font-size:13px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.stage-desc{
+  margin-top:6px;
+  font-size:12px;
+  line-height:1.65;
+  color:inherit;
+}
+
+.operator-list{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px 14px;
+  color:#222;
+  font-family:Georgia, "Times New Roman", serif;
+  font-size:19px;
+}
+
+.operator-list span{opacity:.76;}
+
+.animation-stage{
+  position:relative;
+  background:#fff;
+  overflow:hidden;
+  min-height:640px;
+}
+
+.math-canvas{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+}
+
+.coordinate-svg,
+.path-svg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+
+.floating-math{
+  position:absolute;
+  color:rgba(0,0,0,.11);
+  font-family:Georgia, "Times New Roman", serif;
+  pointer-events:none;
+  user-select:none;
+}
+
+.center-formula{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%, -50%);
+  width:min(720px, calc(100% - 90px));
+  min-height:180px;
+  pointer-events:none;
+}
+
+.assembly-guide{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(670px, calc(100% - 130px));
+  height:1px;
+  transform:translate(-50%, 26px);
+  background:linear-gradient(90deg, transparent, rgba(0,0,0,.45), transparent);
+  opacity:.55;
+}
+
+.symbol-token{
+  position:absolute;
+  z-index:3;
+  color:#000;
+  font-family:Georgia, "Times New Roman", serif;
+  font-size:clamp(28px, 3vw, 46px);
+  line-height:1;
+  white-space:nowrap;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  padding:0;
+  transform-origin:center center;
+  will-change:transform, opacity;
+}
+
+.symbol-token.small{font-size:clamp(22px, 2.2vw, 34px);}
+
+.verification-ring{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:350px;
+  height:350px;
+  border-radius:50%;
+  transform:translate(-50%, -50%) scale(.76);
+  border:1px solid rgba(0,0,0,.18);
+  opacity:0;
+  pointer-events:none;
+}
+
+.verification-ring::before,
+.verification-ring::after{
+  content:"";
+  position:absolute;
+  border-radius:50%;
+  border:1px solid rgba(0,0,0,.12);
+}
+
+.verification-ring::before{inset:34px;}
+.verification-ring::after{inset:70px;}
+
+.verification-cross{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:300px;
+  height:300px;
+  transform:translate(-50%, -50%) scale(.76);
+  opacity:0;
+  pointer-events:none;
+}
+
+.verification-cross::before,
+.verification-cross::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:330px;
+  height:1.8px;
+  background:#000;
+  transform-origin:center;
+}
+
+.verification-cross::before{transform:translate(-50%,-50%) rotate(14deg);}
+.verification-cross::after{transform:translate(-50%,-50%) rotate(-14deg);}
+
+.phase-caption{
+  position:absolute;
+  left:24px;
+  bottom:24px;
+  max-width:560px;
+  display:grid;
+  gap:6px;
+}
+
+.phase-caption strong{
+  color:#000;
+  font-size:12px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+.phase-caption span{
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.bottom-strip{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  min-height:116px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-top:1px solid var(--line);
+  background:rgba(255,255,255,.96);
+}
+
+.output-box{
+  padding:16px 18px;
+}
+
+.output-box:first-child{border-right:1px solid var(--line);}
+
+.output-label{
+  margin:0 0 10px;
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--muted-2);
+}
+
+.math-output{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  color:#000;
+  font-family:Georgia, "Times New Roman", serif;
+  font-size:18px;
+}
+
+.trace-wrap{
+  min-height:360px;
+  max-height:420px;
+  overflow:hidden;
+  border-top:1px solid var(--line);
+  padding-top:10px;
+}
+
+.trace-line{
+  display:grid;
+  grid-template-columns:72px 1fr 52px;
+  gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid #ececec;
+  font-size:11px;
+  color:var(--muted);
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  opacity:0;
+  transform:translateY(8px);
+}
+
+.trace-line .expr{
+  color:#111;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.trace-line .state{text-align:right;color:#111;}
+.trace-line .state.reject{text-decoration:line-through;color:#8b8b8b;}
+
+.verdict-box{
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+}
+
+.verdict-box strong{
+  display:block;
+  margin-bottom:10px;
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--muted-2);
+}
+
+#verdictMain{
+  min-height:56px;
+  color:#111;
+  font-size:20px;
+  line-height:1.4;
+  font-family:Georgia, "Times New Roman", serif;
+}
+
+#verdictSub{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.75;
+}
+
+.meter{
+  position:relative;
+  margin-top:14px;
+  height:2px;
+  background:#dcdcdc;
+  overflow:hidden;
+}
+
+.meter span{
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:0%;
+  background:#111;
+}
+
+.footer{
+  background:#fff;
+  border-top:1px solid var(--line);
+}
+
+.footer-inner{
+  padding:18px 0 28px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:16px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.8;
+}
+
+.code-note{
+  color:#303030;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@media (max-width:1080px){
+  .hero-inner{grid-template-columns:1fr;}
+  .animation-body{grid-template-columns:1fr;}
+  .side-panel{border-right:0;border-bottom:1px solid var(--line);}
+  .trace-panel{border-left:0;border-top:1px solid var(--line);}
+  .animation-stage{min-height:620px;}
+}
+
+@media (max-width:760px){
+  .topbar-inner{flex-direction:column;align-items:flex-start;padding:14px 0;}
+  .grid{grid-template-columns:1fr;}
+  .animation-header{grid-template-columns:1fr;}
+  .bottom-strip{grid-template-columns:1fr;}
+  .output-box:first-child{border-right:0;border-bottom:1px solid var(--line);}
+  .footer-inner{grid-template-columns:1fr;}
+  .nav{gap:6px;}
+}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-label="Law-Mind icon">
+          <rect x="0.5" y="0.5" width="63" height="63" fill="#000" stroke="rgba(255,255,255,.18)"/>
+          <path d="M14 46 V18" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M14 46 H28" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M34 46 V18 L45 34 L56 18 V46" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11 52 C22 41, 34 31, 52 13" stroke="#fff" stroke-width="1.4" fill="none" opacity=".7"/>
+          <circle cx="49" cy="16" r="5.5" fill="none" stroke="#fff" stroke-width="1.4" opacity=".8"/>
+          <path d="M52.8 19.7 L57 24" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".8"/>
+          <text x="8" y="14" font-size="8" fill="#fff" opacity=".72">∂</text>
+        </svg>
+        <div class="brand-text">
+          <strong>LAW-MIND</strong>
+          <span>Closed-form PDE discovery</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a href="#overview">Overview</a>
+        <a href="#animation">Animation</a>
+        <a href="#links">Links</a>
+        <a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://arxiv.org/" target="_blank" rel="noopener noreferrer">Paper</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="kicker">Minimal interface · monochrome mathematical visualization</p>
+        <h1>Automated discovery of closed-form analytical solutions to PDEs.</h1>
+        <p class="hero-lead">
+          Law-Mind is designed to discover closed-form analytical solutions to partial differential equations directly from governing equations, without numerical data or supervision. The core workflow repeatedly constructs candidate solution functions from mathematical symbols, substitutes them into the target PDE, evaluates the residual, and retains only the candidates that pass symbolic verification.
+        </p>
+      </div>
+
+      <div class="hero-side">
+        <div class="hero-metrics">
+          <div class="metric">
+            <strong>Core idea</strong>
+            <span>Symbolic recombination of mathematical terms for exact PDE solution search.</span>
+          </div>
+          <div class="metric">
+            <strong>State machine</strong>
+            <span>Fixed PDE → candidate structures → symbol decomposition → recombination → residual evaluation → loop.</span>
+          </div>
+          <div class="metric">
+            <strong>Visual language</strong>
+            <span>Black header, white page body, monochrome graphics, low-profile scientific presentation.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="main-shell">
+    <section class="grid" id="overview">
+      <article class="card">
+        <h2 class="card-title">Paper overview</h2>
+        <p>
+          Law-Mind addresses a narrow but consequential scientific problem: how to search for exact analytical solutions of PDEs when only the governing equation is available. Instead of relying on numerical supervision, sampled trajectories, or fitted coefficients from external data, the method searches directly in symbolic function space.
+        </p>
+        <p>
+          The algorithm decomposes candidate solutions into mathematical components, recombines these components into structured expressions, and uses symbolic residual evaluation as the acceptance criterion. This makes the workflow interpretable, mathematically grounded, and visually suitable for a state-machine style presentation.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2 class="card-title">Method summary</h2>
+        <ul>
+          <li>Fix a target PDE and expose its operator structure.</li>
+          <li>Generate candidate solution structures from reusable symbolic primitives.</li>
+          <li>Split each candidate into mathematical tokens or function parts.</li>
+          <li>Recombine the tokens into new closed-form hypotheses.</li>
+          <li>Substitute the hypothesis into the PDE and compute the residual.</li>
+          <li>Retain or reject the candidate, then continue the loop.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2 class="card-title">Law-Mind icon</h2>
+        <div class="icon-showcase">
+          <svg class="icon-panel" viewBox="0 0 96 96" aria-label="Law-Mind icon showcase">
+            <rect x="0.5" y="0.5" width="95" height="95" fill="#fff" stroke="#111"/>
+            <path d="M20 70 V24" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+            <path d="M20 70 H42" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+            <path d="M52 70 V24 L66 46 L80 24 V70" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M18 80 C32 60, 46 46, 77 17" stroke="#111" stroke-width="1.8" fill="none" opacity=".8"/>
+            <circle cx="74" cy="20" r="9" fill="none" stroke="#111" stroke-width="1.8"/>
+            <path d="M80 26 L87 33" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>
+            <text x="12" y="18" font-size="10" fill="#111">∂</text>
+          </svg>
+          <div class="icon-caption">
+            <strong>LM + search trajectory + differential symbol</strong>
+            <p>
+              The icon combines the letters <em>L</em> and <em>M</em> with a search curve and a lens motif, expressing symbolic exploration over mathematical structure while remaining minimal and monochrome.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" id="links">
+        <h2 class="card-title">Links</h2>
+        <div class="links">
+          <a class="link-btn" href="https://arxiv.org/" target="_blank" rel="noopener noreferrer">Paper ↗</a>
+          <a class="link-btn" href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+        </div>
+        <p>
+          The current file uses placeholder destinations for the paper and repository. Replace the two URLs above with the actual project links when your manuscript and code repository are ready.
+        </p>
+      </article>
+    </section>
+
+    <section class="animation-card" id="animation">
+      <div class="animation-header">
+        <div>
+          <h2 class="section-heading">Formula state machine animation</h2>
+          <p>
+            A fixed PDE is shown on the left. The central stage visualizes coordinate axes, characteristic lines, residual operators, partial differential symbols, and verification paths. Candidate formulas are decomposed into mathematical symbols, fly in from different directions, recombine into a candidate expression, and then undergo residual verification in a continuous loop.
+          </p>
+        </div>
+        <div class="anim-status">
+          <strong id="statusMain">Search state</strong>
+          <span id="statusSub">Initializing symbolic enumeration</span>
+        </div>
+      </div>
+
+      <div class="animation-body">
+        <aside class="side-panel">
+          <div class="info-block">
+            <p class="label">Target PDE</p>
+            <div class="pde-box" id="targetPDE">\[u_t + a u_x = 0\]</div>
+          </div>
+
+          <div class="info-block">
+            <p class="label">Search stages</p>
+            <div class="stage-list">
+              <div class="stage-row active" id="stage-structure">
+                <div class="stage-name">Structure stage</div>
+                <div class="stage-desc">Generate a candidate solution structure for the fixed PDE.</div>
+              </div>
+              <div class="stage-row" id="stage-decompose">
+                <div class="stage-name">Decompose stage</div>
+                <div class="stage-desc">Split the candidate into symbolic function pieces.</div>
+              </div>
+              <div class="stage-row" id="stage-recombine">
+                <div class="stage-name">Recombine stage</div>
+                <div class="stage-desc">Let the symbol pieces reassemble into a closed-form hypothesis.</div>
+              </div>
+              <div class="stage-row" id="stage-residual">
+                <div class="stage-name">Residual stage</div>
+                <div class="stage-desc">Substitute the hypothesis into the PDE and test whether the residual vanishes.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-block">
+            <p class="label">Operator field</p>
+            <div class="operator-list">
+              <span>\(\partial_t\)</span>
+              <span>\(\partial_x\)</span>
+              <span>\(R[u]\)</span>
+              <span>\(\mathcal{L}\)</span>
+              <span>\(D_x\)</span>
+              <span>\(u_t+a u_x\)</span>
+            </div>
+          </div>
+        </aside>
+
+        <section class="animation-stage">
+          <div class="math-canvas" id="mathField">
+            <svg class="coordinate-svg" viewBox="0 0 900 560" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <marker id="axisArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L6,3 z" fill="rgba(0,0,0,.38)" />
+                </marker>
+              </defs>
+              <g stroke="rgba(0,0,0,.11)" stroke-width="1">
+                <path d="M80 470 H825" marker-end="url(#axisArrow)" />
+                <path d="M120 510 V58" marker-end="url(#axisArrow)" />
+                <path d="M120 470 C240 352, 320 328, 430 280 S666 178, 800 84" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="1.6" />
+                <path d="M136 454 C248 438, 364 379, 462 328 C590 260, 680 226, 804 208" fill="none" stroke="rgba(0,0,0,.12)" stroke-width="1" stroke-dasharray="6 8" />
+                <path d="M180 140 Q420 80 740 128" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="1" />
+                <path d="M196 330 Q420 384 760 328" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="1" />
+              </g>
+              <g fill="rgba(0,0,0,.22)" font-family="Georgia, serif" font-size="18">
+                <text x="833" y="478">x</text>
+                <text x="104" y="49">t</text>
+                <text x="620" y="114">characteristic: x − at</text>
+                <text x="182" y="246">R[u] = u<tspan baseline-shift="sub">t</tspan> + a u<tspan baseline-shift="sub">x</tspan></text>
+                <text x="313" y="404">candidate manifold</text>
+              </g>
+            </svg>
+
+            <svg class="path-svg" id="pathSvg" viewBox="0 0 900 560" preserveAspectRatio="none" aria-hidden="true"></svg>
+
+            <div class="floating-math" style="left:8%;top:12%;font-size:40px;">∂</div>
+            <div class="floating-math" style="right:12%;top:15%;font-size:30px;">∫</div>
+            <div class="floating-math" style="left:18%;bottom:22%;font-size:26px;">λ</div>
+            <div class="floating-math" style="right:16%;bottom:23%;font-size:34px;">Σ</div>
+            <div class="floating-math" style="left:36%;top:9%;font-size:24px;">δ</div>
+
+            <div class="assembly-guide"></div>
+            <div class="verification-ring" id="verificationRing"></div>
+            <div class="verification-cross" id="verificationCross"></div>
+            <div class="center-formula" id="centerFormula"></div>
+
+            <div class="phase-caption">
+              <strong id="captionTitle">Structure stage</strong>
+              <span id="captionText">The system begins with a fixed PDE and creates a candidate solution structure.</span>
+            </div>
+
+            <div class="bottom-strip">
+              <div class="output-box">
+                <p class="output-label">Assembled candidate</p>
+                <div class="math-output" id="candidateOutput">\(u = \, ?\)</div>
+              </div>
+              <div class="output-box">
+                <p class="output-label">Symbolic residual</p>
+                <div class="math-output" id="residualOutput">\(R[u] = u_t + a u_x\)</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="trace-panel">
+          <p class="label">Verification trace</p>
+          <div class="trace-wrap" id="trace"></div>
+
+          <div class="verdict-box">
+            <strong>Current verdict</strong>
+            <div id="verdictMain">Waiting for symbolic assembly.</div>
+            <div class="meter"><span id="meterFill"></span></div>
+            <div id="verdictSub">A candidate is retained only when symbolic substitution reduces the residual exactly to zero.</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        Law-Mind website concept: black upper navigation region, white main page, monochrome mathematical state-machine animation, minimal scientific presentation.
+      </div>
+      <div class="code-note">Law-Mind / symbolic PDE solution search</div>
+    </div>
+  </footer>
+
+<script>
+const scenes = [
+  {
+    stage:"structure",
+    title:"Structure stage",
+    caption:"The system fixes the PDE and proposes an initial candidate structure for symbolic testing.",
+    status:"Generate structure",
+    statusSub:"fixed PDE → candidate form",
+    candidate:"\\(u = \\sin(x-t)\\)",
+    residual:"\\(R[u]=(a-1)\\cos(x-t)\\)",
+    verdict:"Candidate generated, but not yet valid.",
+    verdictSub:"The proposed structure is syntactically plausible, but the residual does not vanish for general a.",
+    accepted:false,
+    progress:22,
+    logStage:"structure",
+    logExpr:"u = sin(x - t)",
+    logState:"reject",
+    tokens:[
+      {text:"u =", dir:"left", x:-246, y:0, cls:"small"},
+      {text:"sin", dir:"top", x:-96, y:0},
+      {text:"(", dir:"bottom", x:-16, y:0},
+      {text:"x", dir:"left", x:20, y:0},
+      {text:"−", dir:"right", x:68, y:0},
+      {text:"t", dir:"bottom", x:116, y:0},
+      {text:")", dir:"top", x:156, y:0}
+    ]
+  },
+  {
+    stage:"decompose",
+    title:"Decompose stage",
+    caption:"The candidate is split into symbolic function parts, exposing its basis and internal argument.",
+    status:"Decompose symbols",
+    statusSub:"basis tokenization + argument exposure",
+    candidate:"\\(u = [\\sin]([x] - [t])\\)",
+    residual:"\\(R[u]=(a-1)\\cos(x-t)\\)",
+    verdict:"Decomposition completed.",
+    verdictSub:"The symbolic pieces are now separable and ready for recombination into a more faithful hypothesis.",
+    accepted:false,
+    progress:40,
+    logStage:"decompose",
+    logExpr:"decompose: sin | x | - | t",
+    logState:"reject",
+    tokens:[
+      {text:"u =", dir:"left", x:-260, y:0, cls:"small"},
+      {text:"sin", dir:"top", x:-132, y:-8},
+      {text:"x", dir:"left", x:-24, y:12},
+      {text:"−", dir:"right", x:40, y:10},
+      {text:"t", dir:"bottom", x:104, y:12}
+    ]
+  },
+  {
+    stage:"recombine",
+    title:"Recombine stage",
+    caption:"The symbolic pieces are rearranged to incorporate the transport coefficient into the characteristic argument.",
+    status:"Recombine terms",
+    statusSub:"symbol blocks → new candidate",
+    candidate:"\\(u = \\sin(x-a t)\\)",
+    residual:"\\(R[u]=-a\\cos(x-at)+a\\cos(x-at)=0\\)",
+    verdict:"Candidate recombined successfully.",
+    verdictSub:"Introducing a into the argument aligns the candidate with the characteristic structure of the PDE.",
+    accepted:true,
+    progress:72,
+    logStage:"recombine",
+    logExpr:"u = sin(x - a*t)",
+    logState:"pass",
+    tokens:[
+      {text:"u =", dir:"left", x:-278, y:0, cls:"small"},
+      {text:"sin", dir:"top", x:-112, y:0},
+      {text:"(", dir:"bottom", x:-30, y:0},
+      {text:"x", dir:"left", x:0, y:0},
+      {text:"−", dir:"right", x:48, y:0},
+      {text:"a", dir:"top", x:92, y:0},
+      {text:"t", dir:"bottom", x:136, y:0},
+      {text:")", dir:"right", x:176, y:0}
+    ]
+  },
+  {
+    stage:"residual",
+    title:"Residual stage",
+    caption:"The recombined hypothesis is substituted into the PDE, and the residual is simplified to obtain a symbolic certificate.",
+    status:"Residual verification",
+    statusSub:"substitute → differentiate → simplify",
+    candidate:"\\(u^*(x,t)=\\sin(x-a t)\\)",
+    residual:"\\(R[u^*]=u_t^*+a u_x^*=0\\)",
+    verdict:"Closed-form candidate retained.",
+    verdictSub:"The residual collapses exactly to zero, so the current hypothesis is retained as a valid closed-form analytical solution candidate.",
+    accepted:true,
+    progress:100,
+    logStage:"residual",
+    logExpr:"R[sin(x-a*t)] = 0",
+    logState:"pass",
+    tokens:[
+      {text:"u* =", dir:"left", x:-302, y:0, cls:"small"},
+      {text:"sin", dir:"top", x:-122, y:0},
+      {text:"(", dir:"right", x:-36, y:0},
+      {text:"x", dir:"left", x:0, y:0},
+      {text:"−", dir:"bottom", x:44, y:0},
+      {text:"a", dir:"top", x:92, y:0},
+      {text:"t", dir:"right", x:134, y:0},
+      {text:")", dir:"bottom", x:172, y:0}
+    ]
+  }
+];
+
+const mathField = document.getElementById("mathField");
+const pathSvg = document.getElementById("pathSvg");
+const trace = document.getElementById("trace");
+const candidateOutput = document.getElementById("candidateOutput");
+const residualOutput = document.getElementById("residualOutput");
+const verdictMain = document.getElementById("verdictMain");
+const verdictSub = document.getElementById("verdictSub");
+const meterFill = document.getElementById("meterFill");
+const verificationRing = document.getElementById("verificationRing");
+const verificationCross = document.getElementById("verificationCross");
+const captionTitle = document.getElementById("captionTitle");
+const captionText = document.getElementById("captionText");
+const statusMain = document.getElementById("statusMain");
+const statusSub = document.getElementById("statusSub");
+
+const stageIds = ["structure", "decompose", "recombine", "residual"];
+let sceneIndex = 0;
+let loopStarted = false;
+
+function wait(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function typeset(nodes){
+  if(window.MathJax && MathJax.typesetPromise){
+    return MathJax.typesetPromise(nodes);
+  }
+  return Promise.resolve();
+}
+
+function fieldRect(){
+  return mathField.getBoundingClientRect();
+}
+
+function targetPoint(token){
+  const rect = fieldRect();
+  return {
+    x: rect.width / 2 + token.x,
+    y: rect.height / 2 - 38 + token.y
+  };
+}
+
+function sourcePoint(dir, i, n){
+  const rect = fieldRect();
+  const spread = (i - (n - 1) / 2) * 48;
+  const jitter = ((i * 37) % 30) - 15;
+  switch(dir){
+    case "left": return {x:-120 - (i % 3) * 24, y:rect.height / 2 + spread};
+    case "right": return {x:rect.width + 120 + (i % 3) * 24, y:rect.height / 2 + spread};
+    case "top": return {x:rect.width / 2 + spread * 1.35, y:-90 - jitter};
+    case "bottom": return {x:rect.width / 2 + spread * 1.35, y:rect.height + 90 + jitter};
+    default: return {x:rect.width / 2, y:rect.height / 2};
+  }
+}
+
+function createPath(from, to, idx){
+  const w = fieldRect().width;
+  const h = fieldRect().height;
+  const sx = from.x / w * 900;
+  const sy = from.y / h * 560;
+  const tx = to.x / w * 900;
+  const ty = to.y / h * 560;
+  const cx = (sx + tx) / 2 + (idx % 2 === 0 ? 50 : -50);
+  const cy = (sy + ty) / 2 + (idx % 3 - 1) * 40;
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "rgba(0,0,0,.23)");
+  path.setAttribute("stroke-width", idx % 2 === 0 ? "1.1" : ".9");
+  path.setAttribute("stroke-dasharray", "4 8");
+  path.setAttribute("opacity", "0");
+  pathSvg.appendChild(path);
+
+  const len = path.getTotalLength();
+  path.style.strokeDasharray = `${len}`;
+  path.style.strokeDashoffset = `${len}`;
+  return path;
+}
+
+function setStageState(activeStage){
+  stageIds.forEach(id => {
+    const el = document.getElementById(`stage-${id}`);
+    el.classList.remove("active", "done");
+    const activeIdx = stageIds.indexOf(activeStage);
+    const idx = stageIds.indexOf(id);
+    if(idx < activeIdx) el.classList.add("done");
+    if(id === activeStage) el.classList.add("active");
+  });
+}
+
+function renderTrace(scene){
+  const line = document.createElement("div");
+  line.className = "trace-line";
+  line.innerHTML = `
+    <span>${scene.logStage}</span>
+    <span class="expr">${scene.logExpr}</span>
+    <span class="state ${scene.logState === "reject" ? "reject" : ""}">${scene.logState}</span>
+  `;
+  trace.appendChild(line);
+  const lines = trace.querySelectorAll(".trace-line");
+  if(lines.length > 11){
+    trace.removeChild(lines[0]);
+  }
+  gsap.to(line, {opacity:1, y:0, duration:.42, ease:"power2.out"});
+}
+
+async function renderScene(scene){
+  setStageState(scene.stage);
+  captionTitle.textContent = scene.title;
+  captionText.textContent = scene.caption;
+  statusMain.textContent = scene.status;
+  statusSub.textContent = scene.statusSub;
+
+  verdictMain.textContent = "Assembling symbolic terms.";
+  verdictSub.textContent = "Symbols enter from four directions, recombine, and then undergo residual verification.";
+  candidateOutput.innerHTML = "\\(u = \\, ?\\)";
+  residualOutput.innerHTML = "\\(R[u] = u_t + a u_x\\)";
+  await typeset([candidateOutput, residualOutput]);
+
+  pathSvg.innerHTML = "";
+  gsap.set([verificationRing, verificationCross], {opacity:0, scale:.76});
+  gsap.to(meterFill, {width:`${Math.max(4, scene.progress - 18)}%`, duration:.35, ease:"power1.out"});
+
+  const created = scene.tokens.map((tok, i) => {
+    const el = document.createElement("span");
+    el.className = `symbol-token ${tok.cls || ""}`;
+    el.textContent = tok.text;
+    mathField.appendChild(el);
+
+    const target = targetPoint(tok);
+    const source = sourcePoint(tok.dir, i, scene.tokens.length);
+    const path = createPath(source, target, i);
+
+    gsap.set(el, {
+      left:target.x,
+      top:target.y,
+      x:source.x - target.x,
+      y:source.y - target.y,
+      opacity:0,
+      rotate:tok.dir === "left" ? -10 : tok.dir === "right" ? 10 : tok.dir === "top" ? -6 : 6,
+      scale:.84
+    });
+
+    return {el, path};
+  });
+
+  const tl = gsap.timeline();
+  created.forEach((item, i) => {
+    tl.to(item.path, {opacity:.72, strokeDashoffset:0, duration:.86, ease:"power1.inOut"}, i * .13);
+    tl.to(item.el, {
+      x:0,
+      y:0,
+      opacity:1,
+      rotate:0,
+      scale:1,
+      duration:1.02,
+      ease:"power3.out"
+    }, i * .13 + .05);
+  });
+
+  await new Promise(resolve => tl.eventCallback("onComplete", resolve));
+  await wait(300);
+
+  candidateOutput.innerHTML = scene.candidate;
+  residualOutput.innerHTML = scene.residual;
+  await typeset([candidateOutput, residualOutput]);
+  gsap.fromTo([candidateOutput, residualOutput], {opacity:0, y:8}, {opacity:1, y:0, duration:.44, stagger:.08});
+
+  await wait(700);
+
+  if(scene.accepted){
+    gsap.to(verificationRing, {opacity:1, scale:1, duration:.62, ease:"power2.out"});
+    gsap.to(created.map(x => x.el), {opacity:1, duration:.35});
+  }else{
+    gsap.to(verificationCross, {opacity:1, scale:1, duration:.36, ease:"power2.out"});
+    gsap.to(created.map(x => x.el), {
+      opacity:.28,
+      x:"+=12",
+      duration:.36,
+      stagger:.025,
+      ease:"power2.out"
+    });
+  }
+
+  verdictMain.textContent = scene.verdict;
+  verdictSub.textContent = scene.verdictSub;
+  gsap.fromTo([verdictMain, verdictSub], {opacity:0, y:6}, {opacity:1, y:0, duration:.42, stagger:.06});
+  gsap.to(meterFill, {width:`${scene.progress}%`, duration:.7, ease:"power2.out"});
+  renderTrace(scene);
+
+  await wait(scene.accepted ? 1800 : 1450);
+
+  const exitTl = gsap.timeline();
+  created.forEach((item, i) => {
+    const exitX = scene.accepted ? 0 : (i % 2 === 0 ? -76 : 76);
+    const exitY = scene.accepted ? -10 : 46;
+    exitTl.to(item.el, {
+      opacity:0,
+      x:`+=${exitX}`,
+      y:`+=${exitY}`,
+      scale:scene.accepted ? 1.03 : .78,
+      duration:.52,
+      ease:"power2.in"
+    }, i * .025);
+    exitTl.to(item.path, {opacity:0, duration:.34}, i * .025);
+  });
+  exitTl.to([verificationRing, verificationCross], {opacity:0, scale:.8, duration:.32}, 0);
+  await new Promise(resolve => exitTl.eventCallback("onComplete", resolve));
+
+  created.forEach(item => item.el.remove());
+  pathSvg.innerHTML = "";
+}
+
+async function loop(){
+  if(loopStarted) return;
+  loopStarted = true;
+  await typeset(document.querySelectorAll("body"));
+  while(true){
+    await renderScene(scenes[sceneIndex]);
+    sceneIndex = (sceneIndex + 1) % scenes.length;
+    if(sceneIndex === 0){
+      await wait(500);
+      trace.innerHTML = "";
+    }
+  }
+}
+
+window.addEventListener("load", () => {
+  if(window.MathJax && MathJax.startup && MathJax.startup.promise){
+    MathJax.startup.promise.then(loop);
+  }else{
+    loop();
+  }
+});
+
+window.addEventListener("resize", () => {
+  document.querySelectorAll(".symbol-token").forEach(el => el.remove());
+  pathSvg.innerHTML = "";
+});
+</script>
+</body>
+</html>
